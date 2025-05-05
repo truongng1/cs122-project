@@ -2,7 +2,7 @@ from flask import Flask, request, redirect, url_for, render_template, session, f
 from datetime import timedelta
 import os
 from flask_sqlalchemy import SQLAlchemy
-from models import db, User
+from models.models import db, User
 from collections import defaultdict
 from datetime import datetime
 
@@ -15,7 +15,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
 with app.app_context():
-    from models import User
     db.create_all()
     if not User.query.filter_by(email="alice@example.com").first():
         db.session.add(User(name="Alice", email="alice@example.com", password="password123"))
