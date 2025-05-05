@@ -5,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from models.models import db, User
 from collections import defaultdict
 from datetime import datetime
+from routes.transaction_routes import transaction_bp
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
@@ -121,6 +122,7 @@ def logout():
     session.pop('user_id', None)
     return redirect(url_for('login'))
 
+app.register_blueprint(transaction_bp)
 
 
 if __name__ == '__main__':

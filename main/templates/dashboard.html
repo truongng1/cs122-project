@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - WalletO</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      color: white;
+    }
+
+    #bg-video {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      min-width: 100%;
+      min-height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+
+    .navbar {
+      display: flex;
+      justify-content: space-around;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 10px 0;
+    }
+
+    .navbar a {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 8px 16px;
+    }
+
+    .navbar a.logout {
+      color: red;
+    }
+
+    .content {
+      padding: 60px 30px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Galaxy background -->
+  <video autoplay muted loop id="bg-video">
+    <source src="{{ url_for('static', filename='background.mp4') }}" type="video/mp4">
+    Your browser does not support HTML5 video.
+  </video>
+
+  <!-- Navbar -->
+  <div class="navbar">
+      <a href="{{ url_for('dashboard',user_id=user.id) }}">Transactions</a>
+      <a href="{{ url_for('stats') }}">Stats</a>
+      <a href="{{ url_for('accounts') }}">Accounts</a>
+      <a href="{{ url_for('more') }}">More</a>
+      <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+  </div>
+
+  <!-- Main content -->
+  <div class="content">
+  <h1>Welcome, {{ user.name }}</h1>
+
+  <!-- Toggle Buttons -->
+  <div style="margin: 20px 0;">
+    <button onclick="showView('daily')" style="padding:10px 20px; margin-right:10px; background:#3498db; color:white; border:none; border-radius:5px;">Daily</button>
+    <button onclick="showView('monthly')" style="padding:10px 20px; background:#2ecc71; color:white; border:none; border-radius:5px;">Monthly</button>
+  </div>
+
+  <!-- Add Transaction Button (Floating) -->
+  <button onclick="window.location.href='{{ url_for('transaction.add_transaction_form') }}'"
+          style="position:fixed; bottom:30px; right:30px; background:red; color:white; border:none; border-radius:50%; width:50px; height:50px; font-size:24px; box-shadow: 0 0 10px white; cursor:pointer;">
+    +
+  </button>
+
+  <!-- Daily Transactions View -->
+      <div id="daily-view">
+        <h2>Daily Transactions - {{ current_month }} {{ current_year }}</h2>
+        {% if daily_transactions %}
+          {% for date, transactions in daily_transactions.items() %}
+            <h3 style="border-bottom:1px solid white;">{{ date }}</h3>
+            <div style="display:flex; flex-wrap:wrap; justify-content:center;">
+              {% for t in transactions %}
+                <div style="background-color:rgba(0,0,0,0.6); margin:10px; padding:15px; border-radius:10px; width:250px; box-shadow: 0 0 5px white;">
+                  <strong>{{ t.type.title() }}</strong> - {{ t.category }}<br>
+                  ${{ "%.2f"|format(t.amount) }}<br>
+                  <small>{{ t.note }}</small><br>
+                  <small>{{ t.date.strftime('%Y-%m-%d') }}</small>
+                </div>
+              {% endfor %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <p>No transactions for this month.</p>
+        {% endif %}
+      </div>
+
+      <!-- Monthly Summary View -->
+      <div id="monthly-view" style="display:none;">
+        <h2>Monthly Summary - {{ current_year }}</h2>
+        <table border="1" style="margin: 0 auto; background: rgba(0,0,0,0.5); color: white; border-collapse: collapse;">
+          <tr style="background: rgba(255,255,255,0.1);">
+            <th style="padding:10px;">Month</th>
+            <th style="padding:10px;">Income</th>
+            <th style="padding:10px;">Expense</th>
+          </tr>
+          {% for month, data in monthly_summary.items() %}
+          <tr>
+            <td style="padding:10px;">{{ month }}</td>
+            <td style="padding:10px;">${{ "%.2f"|format(data.income) }}</td>
+            <td style="padding:10px;">${{ "%.2f"|format(data.expense) }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </div>
+
+    <script>
+    function showView(view) {
+      document.getElementById("daily-view").style.display = (view === 'daily') ? 'block' : 'none';
+      document.getElementById("monthly-view").style.display = (view === 'monthly') ? 'block' : 'none';
+    }
+    </script>
+
+
+
+</body>
+</html>
