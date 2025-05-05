@@ -1,119 +1,32 @@
 from flask import Flask, request, redirect, url_for, render_template, session, flash
-import uuid
-from datetime import datetime
+from datetime import timedelta
+import os
+from flask_sqlalchemy import SQLAlchemy
+from models import db, User
 from collections import defaultdict
+from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = 'password123'
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
+app.permanent_session_lifetime = timedelta(days=1)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///walleto.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# ========= OOP CLASSES =========
+db.init_app(app)
 
-class Transaction:
-    def __init__(self, amount, category, type_, note="", date=None):
-        self.id = uuid.uuid4()
-        self.amount = amount
-        self.category = category
-        self.type = type_  # 'income' or 'expense'
-        self.date = date or datetime.now()
-        self.note = note
-
-    def __str__(self):
-        return f"{self.date.date()} | {self.type.upper()} | {self.category} | ${self.amount:.2f} | {self.note}"
-
-class User:
-    def __init__(self, name, email, password):
-        self.id = uuid.uuid4()
-        self.name = name
-        self.email = email
-        self.password = password
-        self.transactions = []
-        self.budgets = defaultdict(float)
-
-    def get_summary(self):
-        summary = defaultdict(float)
-        for t in self.transactions:
-            if t.type == "income":
-                summary[t.category] += t.amount
-            elif t.type == "expense":
-                summary[t.category] -= t.amount
-        return summary
-
-class UserManager:
-    def __init__(self):
-        self.users = {}
-
-    def create_user(self, name, email, password):
-        user = User(name, email, password)
-        self.users[str(user.id)] = user
-        return user
-
-    def get_user(self, user_id):
-        return self.users.get(user_id)
-
-    def list_users(self):
-        return list(self.users.values())
-
-
-# ========= INITIAL DATA =========
-
-user_manager = UserManager()
-user_manager.create_user("Alice", "alice@example.com", "password123")
-user_manager.create_user("Bob", "bob@example.com", "password321")
-
-
-# ========= ROUTES =========
+with app.app_context():
+    from models import User
+    db.create_all()
+    if not User.query.filter_by(email="alice@example.com").first():
+        db.session.add(User(name="Alice", email="alice@example.com", password="password123"))
+        db.session.commit()
 
 @app.route('/')
 def index():
-    users = user_manager.list_users()
-    return render_template("index.html", users=users)
-    
-
-@app.route('/create_user', methods=['POST'])
-def create_user():
-    name = request.form['name']
-    email = request.form['email']
-    password = request.form['password']
-    user_manager.create_user(name, email, password)
-    return redirect(url_for('index'))
-
-#@app.route('/user/<user_id>')
-def dashboard(user_id):
-    user = user_manager.get_user(user_id)
-    if not user:
-        return "User not found", 404
-    summary = user.get_summary()
-    return render_template("dashboard.html", user=user, summary=summary)
-
-@app.route('/user/<user_id>/add_transaction', methods=['POST'])
-def add_transaction(user_id):
-    user = user_manager.get_user(user_id)
-    if not user:
-        return "User not found", 404
-    try:
-        amount = float(request.form['amount'])
-        category = request.form['category']
-        type_ = request.form['type']
-        note = request.form.get('note', '')
-        transaction = Transaction(amount, category, type_, note)
-        user.add_transaction(transaction)
-    except Exception as e:
-        return f"Error: {e}", 400
-    return redirect(url_for('dashboard', user_id=user_id))
-
-@app.route('/user/<user_id>/set_budget', methods=['POST'])
-def set_budget(user_id):
-    user = user_manager.get_user(user_id)
-    if not user:
-        return "User not found", 404
-    try:
-        category = request.form['category']
-        amount = float(request.form['amount'])
-        user.set_budget(category, amount)
-    except Exception as e:
-        return f"Error: {e}", 400
-    return redirect(url_for('dashboard', user_id=user_id))
-
+    user_id = session.get('user_id')
+    if user_id:
+        return redirect(url_for('dashboard', user_id=user_id))
+    return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -121,29 +34,95 @@ def login():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
-        for user in user_manager.list_users():
-            if user.email == email and user.password == password:
-                session['user_id'] = str(user.id)
-                return redirect(url_for('dashboard', user_id=user.id))
-        error = 'Invalid email or password'
-    return render_template('login.html', error=error)
 
-@app.route('/user/<user_id>')
+        user = User.query.filter_by(email=email, password=password).first()
+        if user:
+            session.permanent = True
+            session['user_id'] = user.id
+            return redirect(url_for('dashboard', user_id=user.id))
+        else:
+            error = 'Invalid email or password'
+
+    return render_template('login.html', error=error)
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    error = None
+    if request.method == 'POST':
+        first_name = request.form['first_name']
+        last_name = request.form['last_name']
+        email = request.form['email']
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+
+        # ✅ Validate password
+        if len(password) < 6:
+            error = "Password must meet all complexity requirements."
+        elif password != confirm_password:
+            error = "Passwords do not match."
+        elif User.query.filter_by(email=email).first():
+            error = "Email already exists."
+        else:
+            new_user = User(
+                name=f"{first_name} {last_name}",
+                email=email,
+                password=password
+            )
+            db.session.add(new_user)
+            db.session.commit()
+            return redirect(url_for('login'))
+
+    return render_template('register.html', error=error)
+@app.route('/user/<int:user_id>')
 def dashboard(user_id):
     if session.get('user_id') != user_id:
         return redirect(url_for('login'))
-    user = user_manager.get_user(user_id)
+
+    user = User.query.get(user_id)
     if not user:
         return "User not found", 404
-    summary = user.get_summary()
-    return render_template("dashboard.html", user=user, summary=summary)
 
+    daily_transactions = defaultdict(list)
+    monthly_summary = defaultdict(lambda: {'income': 0, 'expense': 0})
+    current_year = datetime.now().year
+    current_month = datetime.now().strftime("%B")
+
+    for t in user.transactions:
+        # Daily
+        if t.date.year == current_year and t.date.strftime("%B") == current_month:
+            key = t.date.strftime("%Y-%m-%d")
+            daily_transactions[key].append(t)
+        # Monthly
+        if t.date.year == current_year:
+            key = t.date.strftime("%B")
+            if t.type == "income":
+                monthly_summary[key]['income'] += t.amount
+            elif t.type == "expense":
+                monthly_summary[key]['expense'] += t.amount
+
+    return render_template("dashboard.html",
+                           user=user,
+                           current_month=current_month,
+                           current_year=current_year,
+                           daily_transactions=daily_transactions,
+                           monthly_summary=monthly_summary)
+@app.route('/stats')
+def stats():
+    return "<h1>Stats Page</h1>"
+
+@app.route('/accounts')
+def accounts():
+    return "<h1>Accounts Page</h1>"
+
+@app.route('/more')
+def more():
+    return "<h1>More Page</h1>"
 
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
     return redirect(url_for('login'))
-# ========= RUN =========
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,37 +1,130 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>{{ user.name }}'s Dashboard</title>
+  <meta charset="UTF-8">
+  <title>Dashboard - WalletO</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      color: white;
+    }
+
+    #bg-video {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      min-width: 100%;
+      min-height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+
+    .navbar {
+      display: flex;
+      justify-content: space-around;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 10px 0;
+    }
+
+    .navbar a {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 8px 16px;
+    }
+
+    .navbar a.logout {
+      color: red;
+    }
+
+    .content {
+      padding: 60px 30px;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
+
+  <!-- Galaxy background -->
+  <video autoplay muted loop id="bg-video">
+    <source src="{{ url_for('static', filename='background.mp4') }}" type="video/mp4">
+    Your browser does not support HTML5 video.
+  </video>
+
+  <!-- Navbar -->
+  <div class="navbar">
+      <a href="{{ url_for('dashboard',user_id=user.id) }}">Transactions</a>
+      <a href="{{ url_for('stats') }}">Stats</a>
+      <a href="{{ url_for('accounts') }}">Accounts</a>
+      <a href="{{ url_for('more') }}">More</a>
+      <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+  </div>
+
+  <!-- Main content -->
+  <div class="content">
     <h1>Welcome, {{ user.name }}</h1>
+    <!-- Toggle buttons -->
+<div style="margin-bottom: 20px;">
+  <button onclick="showView('daily')">Daily</button>
+  <button onclick="showView('calendar')">Calendar</button>
+  <button onclick="showView('monthly')">Monthly</button>
+</div>
 
-    <h2>Add Transaction</h2>
-    <form method="POST" action="{{ url_for('add_transaction', user_id=user.id) }}">
-        Amount: <input type="number" name="amount" step="0.01"><br>
-        Category: <input name="category"><br>
-        Type: 
-        <select name="type">
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
-        </select><br>
-        Note: <input name="note"><br>
-        <button type="submit">Add</button>
-    </form>
-
-    <h2>Set Budget</h2>
-    <form method="POST" action="{{ url_for('set_budget', user_id=user.id) }}">
-        Category: <input name="category"><br>
-        Amount: <input type="number" name="amount" step="0.01"><br>
-        <button type="submit">Set Budget</button>
-    </form>
-
-    <h2>Transactions</h2>
-    <ul>
-        {% for t in user.transactions %}
-        <li>{{ t }}</li>
+<!-- Daily view (default visible) -->
+<div id="daily-view">
+  <h2>Daily Transactions - {{ current_month }} {{ current_year }}</h2>
+  {% if daily_transactions %}
+    {% for date, transactions in daily_transactions.items() %}
+      <h3>{{ date }}</h3>
+      <ul>
+        {% for t in transactions %}
+          <li>{{ t.date.strftime('%Y-%m-%d') }} - {{ t.type.title() }} - {{ t.category }} - ${{ "%.2f"|format(t.amount) }} ({{ t.note }})</li>
         {% endfor %}
-    </ul>
-    <a href="{{ url_for('index') }}">← Back to User List</a>
+      </ul>
+    {% endfor %}
+  {% else %}
+    <p>No transactions for this month.</p>
+  {% endif %}
+</div>
+
+<!-- Calendar view (hidden initially) -->
+<div id="calendar-view" style="display:none;">
+  <h2>Calendar View - {{ current_month }} {{ current_year }}</h2>
+  <p>[Calendar view will be implemented here]</p>
+</div>
+
+<!-- Monthly summary (hidden initially) -->
+<div id="monthly-view" style="display:none;">
+  <h2>Monthly Summary - {{ current_year }}</h2>
+  <table border="1" style="margin: 0 auto; background: rgba(0,0,0,0.5); color: white;">
+    <tr>
+      <th>Month</th>
+      <th>Income</th>
+      <th>Expense</th>
+    </tr>
+    {% for month, data in monthly_summary.items() %}
+    <tr>
+      <td>{{ month }}</td>
+      <td>${{ "%.2f"|format(data.income) }}</td>
+      <td>${{ "%.2f"|format(data.expense) }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<script>
+function showView(view) {
+  document.getElementById("daily-view").style.display = (view === 'daily') ? 'block' : 'none';
+  document.getElementById("calendar-view").style.display = (view === 'calendar') ? 'block' : 'none';
+  document.getElementById("monthly-view").style.display = (view === 'monthly') ? 'block' : 'none';
+}
+</script>
+
+  </div>
+
 </body>
 </html>
