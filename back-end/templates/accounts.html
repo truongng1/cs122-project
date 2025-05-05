@@ -1,0 +1,20 @@
+<h1>Accounts for {{ user.name }}</h1>
+
+<h2>Groups</h2>
+{% for group in user.account_groups %}
+  <h3>{{ group.group_name }}</h3>
+  <ul>
+    {% for account in group.accounts %}
+      <li>
+        {{ account.name }} ({{ account.type }}) - Balance: ${{ account.balance }}
+        <!-- For now, just showing it -->
+      </li>
+    {% endfor %}
+  </ul>
+{% endfor %}
+
+<h2>Add New Group</h2>
+<form action="{{ url_for('dashboard.add_group') }}" method="POST">
+    <input type="text" name="group_name" placeholder="Group Name" required>
+    <button type="submit">Add Group</button>
+</form>

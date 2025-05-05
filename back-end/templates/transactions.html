@@ -1,0 +1,21 @@
+<h2>Daily Transactions</h2>
+{% for date, txns in daily_transactions.items() %}
+  <h3>{{ date }}</h3>
+  <ul>
+    {% for t in txns %}
+      <li>{{ t.type }} - {{ t.category }} - ${{ t.amount }} - {{ t.note }}</li>
+    {% endfor %}
+  </ul>
+{% endfor %}
+
+<h2>Monthly Summary</h2>
+<table>
+  <tr><th>Month</th><th>Income</th><th>Expense</th></tr>
+  {% for month, values in monthly_summary.items() %}
+    <tr>
+      <td>{{ month }}</td>
+      <td>${{ values.income }}</td>
+      <td>${{ values.expense }}</td>
+    </tr>
+  {% endfor %}
+</table>

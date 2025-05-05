@@ -1,0 +1,27 @@
+<h2>More Features</h2>
+
+<ul>
+  <li><a href="{{ url_for('dashboard.profile') }}">Manage Profile</a></li>
+  <li><a href="{{ url_for('dashboard.trend_data') }}">View Income/Expense Trends</a></li>
+  <li><a href="{{ url_for('dashboard.export_summary') }}">Export Budget Summary (CSV)</a></li>
+  <li><a href="{{ url_for('dashboard.backup_data') }}">Backup Data (JSON)</a></li>
+</ul>
+
+<h3>Add Recurring Transaction</h3>
+<form method="POST" action="{{ url_for('dashboard.add_recurring') }}">
+  Amount: <input type="number" name="amount" step="0.01"><br>
+  Category: <input type="text" name="category"><br>
+  Type:
+  <select name="type">
+    <option value="income">Income</option>
+    <option value="expense">Expense</option>
+  </select><br>
+  Note: <input type="text" name="note"><br>
+  Frequency:
+  <select name="frequency">
+    <option value="monthly">Monthly</option>
+    <!-- You can expand with weekly/daily -->
+  </select><br>
+  Start Date: <input type="date" name="start_date"><br>
+  <button type="submit">Add Recurring</button>
+</form>

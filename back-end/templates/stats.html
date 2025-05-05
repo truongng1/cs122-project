@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stats</title>
+</head>
+<body>
+    <h1>Stats Page</h1>
+    <h2>Selected Month: {{ selected_month }}</h2>
+
+    <h3>Pie Chart Data (Expenses by Category)</h3>
+    <ul>
+        {% for category, amount in category_summary.items() %}
+            <li>{{ category }}: ${{ amount }}</li>
+        {% endfor %}
+    </ul>
+
+    <h3>Bar Chart Data (Monthly Summary)</h3>
+    <table border="1">
+        <tr>
+            <th>Month</th>
+            <th>Income</th>
+            <th>Expense</th>
+        </tr>
+        {% for month, values in monthly_summary.items() %}
+        <tr>
+            <td>{{ month }}</td>
+            <td>${{ values.income }}</td>
+            <td>${{ values.expense }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
