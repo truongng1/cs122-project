@@ -21,8 +21,8 @@ See `requirements.txt` for installation.
 
 1. **Clone the project**:
    ```bash
-   git clone https://github.com/yourusername/walleto.git
-   cd walleto
+   git clone https://github.com/truongng1/cs122-project.git
+   cd cs122-project/main/
    ```
 
 2. **Set up a virtual environment (optional but recommended)**:
