@@ -1,4 +1,4 @@
-# WalletO - Personal Finance Tracker
+# WalletO
 
 ## Group Members
 - Eric Nguyen
