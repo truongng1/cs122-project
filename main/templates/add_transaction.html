@@ -202,10 +202,15 @@
 
       <label>Account:</label>
       <select name="account_id" required>
-          {% for account in accounts %}
-            <option value="{{ account.id }}">{{ account.name }} ({{ account.group.name }})</option>
+          {% for group in user.account_groups %}
+            <optgroup label="{{ group.name }}">
+              {% for account in group.accounts %}
+                <option value="{{ account.id }}">{{ account.name }}</option>
+              {% endfor %}
+            </optgroup>
           {% endfor %}
         </select>
+
 
     </div>
 

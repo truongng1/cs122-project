@@ -191,6 +191,26 @@ def logout():
     session.pop('user_id', None)
     return redirect(url_for('login'))
 
+@app.route('/transactions/add', methods=['GET'])
+def show_add_transaction():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+
+    user = User.query.get(user_id)
+
+    accounts = Account.query.filter_by(user_id=user.id).all()
+    income_categories = ["Salary", "Allowance", "Bonus", "Interest earned", "Other"]
+    expense_categories = ["Food", "Transportation", "Rent", "Shopping", "Utilities", "Other"]
+
+    today = datetime.today().strftime('%Y-%m-%d')
+
+    return render_template("add_transaction.html",
+                           accounts=accounts,
+                           income_categories=income_categories,
+                           expense_categories=expense_categories,
+                           today=today)
+
 app.register_blueprint(transaction_bp)
 app.register_blueprint(dashboard_bp, url_prefix='/')
 
