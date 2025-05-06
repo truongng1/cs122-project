@@ -1,7 +1,8 @@
 # WalletO - Personal Finance Tracker
 
 ## Group Members
-- Eric Nguyen (ericnguyen@example.com)
+- Eric Nguyen
+- Jonathan Huang
 
 ## Project Description
 WalletO is a web-based personal finance tracker that allows users to manage transactions across multiple accounts. Users can record income, expenses, and transfers, view monthly statistics, and export their data. The app supports grouping of accounts and provides a clean interface with a galaxy-themed background.
