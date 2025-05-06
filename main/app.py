@@ -171,20 +171,64 @@ def change_password():
 
 @app.route('/export_transactions', methods=['GET', 'POST'])
 def export_transactions():
+    user = User.query.get(session.get('user_id'))
+    if not user:
+        return redirect(url_for('login'))
+
     if request.method == 'POST':
-        data = [
-            {'Date': '2025-05-01', 'Type': 'Expense', 'Amount': 50},
-            {'Date': '2025-05-02', 'Type': 'Income', 'Amount': 100}
-        ]
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        export_format = request.form.get('format')
+
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d")
+
+        transactions = Transaction.query.filter(
+            Transaction.user_id == user.id,
+            Transaction.date >= start,
+            Transaction.date <= end
+        ).all()
+
+        data = []
+        for t in transactions:
+            row = {
+                'Date': t.date.strftime('%Y-%m-%d'),
+                'Type': t.type,
+                'Amount': t.amount,
+                'Category': t.category,
+                'Note': t.note,
+                'Account': t.account.name if t.account else '',
+                'Account Group': t.account.group.name if t.account and t.account.group else '',
+                'From Account': t.from_account.name if t.from_account else '',
+                'From Account Group': t.from_account.group.name if t.from_account and t.from_account.group else '',
+                'To Account': t.to_account.name if t.to_account else '',
+                'To Account Group': t.to_account.group.name if t.to_account and t.to_account.group else ''
+            }
+            data.append(row)
+
         df = pd.DataFrame(data)
-        output = io.BytesIO()
-        df.to_excel(output, index=False, sheet_name='Transactions')
-        output.seek(0)
-        return send_file(output,
-                         download_name="transactions.xlsx",
-                         as_attachment=True,
-                         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+        if export_format == 'csv':
+            output = io.StringIO()
+            df.to_csv(output, index=False)
+            output.seek(0)
+            return send_file(io.BytesIO(output.getvalue().encode()),
+                             download_name="transactions.csv",
+                             as_attachment=True,
+                             mimetype="text/csv")
+        else:
+            output = io.BytesIO()
+            df.to_excel(output, index=False, sheet_name='Transactions')
+            output.seek(0)
+            return send_file(output,
+                             download_name="transactions.xlsx",
+                             as_attachment=True,
+                             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
     return render_template('export_transactions.html')
+
+
+
 
 @app.route('/logout')
 def logout():
@@ -210,7 +254,50 @@ def show_add_transaction():
                            income_categories=income_categories,
                            expense_categories=expense_categories,
                            today=today)
+@app.route('/add_transaction', methods=['POST'])
+def add_transaction():
+    t_type = request.form['type']
+    amount = float(request.form['amount'])
+    date = datetime.strptime(request.form['date'], "%Y-%m-%d")
+    note = request.form.get('note', '')
+    user_id = session['user_id']
 
+    if t_type == 'income':
+        account_id = request.form['account_id']
+        account = Account.query.get(account_id)
+        account.balance += amount
+        db.session.add(Transaction(
+            type='income', amount=amount, date=date,
+            note=note, user_id=user_id, account_id=account_id
+        ))
+
+    elif t_type == 'expense':
+        account_id = request.form['account_id']
+        account = Account.query.get(account_id)
+        account.balance -= amount
+        db.session.add(Transaction(
+            type='expense', amount=amount, date=date,
+            note=note, user_id=user_id, account_id=account_id
+        ))
+
+    elif t_type == 'transfer':
+        from_id = request.form['from_account_id']
+        to_id = request.form['to_account_id']
+        from_account = Account.query.get(from_id)
+        to_account = Account.query.get(to_id)
+
+        from_account.balance -= amount
+        to_account.balance += amount
+
+        db.session.add(Transaction(
+            type='transfer', amount=amount, date=date,
+            note=note, user_id=user_id,
+            from_account_id=from_id,
+            to_account_id=to_id
+        ))
+
+    db.session.commit()
+    return redirect(url_for('dashboard', user_id=user_id))
 app.register_blueprint(transaction_bp)
 app.register_blueprint(dashboard_bp, url_prefix='/')
 

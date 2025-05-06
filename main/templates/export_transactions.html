@@ -85,19 +85,20 @@
   <a href="{{ url_for('logout') }}" class="logout">Logout</a>
 </div>
 <div class="container">
-  <h2>Export Transactions</h2>
-  <form action="{{ url_for('export_transactions') }}" method="POST">
-    <label>From:</label>
-    <input type="date" name="start_date" required>
-    <label>To:</label>
-    <input type="date" name="end_date" required>
-    <label>Format:</label>
-    <select name="format" required>
-      <option value="csv">CSV</option>
-      <option value="excel">Excel</option>
-    </select>
-    <button type="submit">Export</button>
-  </form>
+  <h2>Export Accounts</h2>
+    <form action="{{ url_for('export_transactions') }}" method="POST">
+      <label>From:</label>
+      <input type="date" name="start_date" required>
+      <label>To:</label>
+      <input type="date" name="end_date" required>
+      <label>Format:</label>
+      <select name="format" required>
+        <option value="csv">CSV</option>
+        <option value="excel">Excel</option>
+      </select>
+      <button type="submit">Export Accounts</button>
+    </form>
+
 </div>
 </body>
 </html>
