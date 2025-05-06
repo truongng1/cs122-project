@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Account - WalletO</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: black;
+      color: white;
+      padding: 60px 30px;
+    }
+    .form-container {
+      background-color: rgba(0, 0, 0, 0.8);
+      padding: 30px;
+      border-radius: 12px;
+      width: 350px;
+      margin: auto;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      font-size: 16px;
+      border: none;
+    }
+    input, select, textarea {
+      background-color: #f2f2f2;
+    }
+    button {
+      background-color: #2980b9;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #1f6aa5;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h2>Add New Account</h2>
+    <form action="{{ url_for('dash.add_account') }}" method="POST">
+      <label>Group:</label>
+      <select name="group_id" id="group-select" required>
+        <option value="">-- Select Group --</option>
+        {% for group in user.account_groups %}
+          <option value="{{ group.id }}">{{ group.name }}</option>
+        {% endfor %}
+        <option value="custom">Custom...</option>
+      </select>
+
+      <input type="text" name="custom_group" id="custom-group" placeholder="Enter custom group name">
+
+      <label>Account Name:</label>
+      <input type="text" name="account_name" required>
+
+      <label>Balance:</label>
+      <input type="number" step="0.01" name="balance" required>
+
+      <label>Description:</label>
+      <textarea name="description" rows="2" placeholder="Optional..."></textarea>
+
+      <button type="submit">Add Account</button>
+    </form>
+  </div>
+
+  <script>
+    const groupSelect = document.getElementById("group-select");
+    const customGroup = document.getElementById("custom-group");
+
+    groupSelect.addEventListener("change", function () {
+      if (this.value === "custom") {
+        customGroup.style.display = "block";
+        customGroup.required = true;
+      } else {
+        customGroup.style.display = "none";
+        customGroup.required = false;
+      }
+    });
+  </script>
+</body>
+</html>

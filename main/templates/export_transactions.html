@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Export Transactions - WalletO</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+      color: white;
+      background-color: black;
+    }
+
+    #bg-video {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      min-width: 100%;
+      min-height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+
+    .navbar {
+      display: flex;
+      justify-content: space-around;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 10px 0;
+    }
+
+    .navbar a {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 8px 16px;
+    }
+
+    .navbar a.logout {
+      color: red;
+    }
+
+    .container {
+      text-align: center;
+      margin-top: 80px;
+    }
+
+    form {
+      background-color: rgba(255,255,255,0.1);
+      display: inline-block;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px white;
+    }
+
+    input, select {
+      padding: 10px;
+      margin: 10px 0;
+      width: 100%;
+      border-radius: 5px;
+      border: none;
+      font-size: 16px;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      background-color: #2ecc71;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<video autoplay muted loop id="bg-video">
+  <source src="{{ url_for('static', filename='background.mp4') }}" type="video/mp4">
+</video>
+<div class="navbar">
+  <a href="{{ url_for('dashboard', user_id=session.get('user_id')) }}">Transactions</a>
+  <a href="{{ url_for('stats') }}">Stats</a>
+  <a href="{{ url_for('dash.accounts') }}">Accounts</a>
+  <a href="{{ url_for('more') }}">More</a>
+  <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+</div>
+<div class="container">
+  <h2>Export Transactions</h2>
+  <form action="{{ url_for('export_transactions') }}" method="POST">
+    <label>From:</label>
+    <input type="date" name="start_date" required>
+    <label>To:</label>
+    <input type="date" name="end_date" required>
+    <label>Format:</label>
+    <select name="format" required>
+      <option value="csv">CSV</option>
+      <option value="excel">Excel</option>
+    </select>
+    <button type="submit">Export</button>
+  </form>
+</div>
+</body>
+</html>

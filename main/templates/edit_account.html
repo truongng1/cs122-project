@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Account - WalletO</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+      color: white;
+      overflow: hidden;
+    }
+
+    #bg-video {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      min-width: 100%;
+      min-height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+
+    .navbar {
+      display: flex;
+      justify-content: space-around;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 10px 0;
+    }
+
+    .navbar a {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 8px 16px;
+    }
+
+    .navbar a.logout {
+      color: red;
+    }
+
+    .form-container {
+      position: absolute;
+      top: 55%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.7);
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+      width: 320px;
+      text-align: center;
+    }
+
+    input, select, textarea, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border: none;
+      font-size: 16px;
+    }
+
+    input, select, textarea {
+      background-color: #f2f2f2;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    #custom-group {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<video autoplay muted loop id="bg-video">
+  <source src="{{ url_for('static', filename='background.mp4') }}" type="video/mp4">
+</video>
+
+<div class="navbar">
+  <a href="{{ url_for('dashboard', user_id=session.get('user_id')) }}">Transactions</a>
+  <a href="{{ url_for('stats') }}">Stats</a>
+  <a href="{{ url_for('dash.accounts') }}">Accounts</a>
+  <a href="{{ url_for('more') }}">More</a>
+  <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+</div>
+
+<div class="form-container">
+  <h2>Edit Account: {{ account.name }}</h2>
+  <form method="POST">
+    <label>Account Name:</label>
+    <input type="text" name="account_name" value="{{ account.name }}" required>
+
+    <label>Balance:</label>
+    <input type="number" step="0.01" name="balance" value="{{ account.balance }}" required>
+
+    <label>Description:</label>
+    <textarea name="description">{{ account.description }}</textarea>
+
+    <label>Group:</label>
+    <select name="group" id="group-select" required>
+      {% for group in user.account_groups %}
+        <option value="{{ group.id }}" {% if account.group_id == group.id %}selected{% endif %}>{{ group.name }}</option>
+      {% endfor %}
+      <option value="custom">Custom...</option>
+    </select>
+
+    <input type="text" name="custom_group" id="custom-group" placeholder="Enter custom group name">
+
+    <button type="submit">Save Changes</button>
+  </form>
+</div>
+
+<script>
+  const groupSelect = document.getElementById("group-select");
+  const customGroup = document.getElementById("custom-group");
+
+  groupSelect.addEventListener("change", function () {
+    if (this.value === "custom") {
+      customGroup.style.display = "block";
+      customGroup.required = true;
+    } else {
+      customGroup.style.display = "none";
+      customGroup.required = false;
+    }
+  });
+</script>
+<script>
+document.querySelector('select[name="group"]').addEventListener('change', function() {
+  const customGroupInput = document.getElementById('custom-group');
+  if (this.value === 'custom') {
+    customGroupInput.style.display = 'block';
+    customGroupInput.required = true;
+  } else {
+    customGroupInput.style.display = 'none';
+    customGroupInput.required = false;
+  }
+});
+</script>
+
+</body>
+</html>

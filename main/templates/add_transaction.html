@@ -2,27 +2,56 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Add Transaction</title>
+  <title>Add Transaction - WalletO</title>
   <style>
     body, html {
       margin: 0;
       padding: 0;
       height: 100%;
+      overflow: hidden;
       font-family: Arial, sans-serif;
-      background-color: black;
       color: white;
+    }
+
+    #bg-video {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      min-width: 100%;
+      min-height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+
+    .navbar {
+      display: flex;
+      justify-content: space-around;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 10px 0;
+    }
+
+    .navbar a {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 8px 16px;
+    }
+
+    .navbar a.logout {
+      color: red;
     }
 
     .form-container {
       position: absolute;
-      top: 50%;
+      top: 55%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(0, 0, 0, 0.7);
       padding: 30px;
-      border-radius: 10px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
       width: 300px;
-      box-shadow: 0 0 10px white;
+      text-align: center;
     }
 
     input, select, textarea, button {
@@ -31,29 +60,249 @@
       margin: 10px 0;
       border-radius: 5px;
       border: none;
+      font-size: 16px;
+    }
+
+    input, select, textarea {
+      background-color: #f2f2f2;
     }
 
     button {
-      background-color: red;
+      background-color: #4CAF50;
       color: white;
-      font-weight: bold;
       cursor: pointer;
     }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+    .form-container input[type="date"],
+    .form-container input[type="number"],
+    .form-container select,
+    .form-container input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      border: 3px solid #ccc;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      font-size: 16px;
+      background-color: #f2f2f2;
+      transition: border 0.3s ease;
+    }
+
+    /* Dynamic border colors */
+    .income-border {
+      border-color: #3498db !important; /* Blue */
+    }
+
+    .expense-border {
+      border-color: #e74c3c !important; /* Light Red */
+    }
+
+    .transfer-border {
+      border-color: #ffffff !important; /* White */
+    }
+    input:hover, select:hover {
+      box-shadow: 0 0 5px rgba(255,255,255,0.5);
+    }
+    .amount-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
+    .dollar-sign {
+      position: absolute;
+      top: 50%;
+      left: 12px;
+      transform: translateY(-50%);
+      color: #555;
+      font-weight: bold;
+      pointer-events: none;  /* Prevents user from clicking on the $ */
+      z-index: 2;
+    }
+
+    .amount-wrapper input {
+      padding-left: 35px; /* Push text past the $ */
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 16px;
+      height: 40px;
+      border-radius: 5px;
+      border: 3px solid #ccc;
+      background-color: #f2f2f2;
+    }
+
+
   </style>
 </head>
 <body>
-  <div class="form-container">
-    <h2>Add Transaction</h2>
-    <form method="POST" action="{{ url_for('transaction.add_transaction') }}">
-      <input type="number" name="amount" placeholder="Amount" step="0.01" required>
-      <input type="text" name="category" placeholder="Category" required>
-      <select name="type" required>
-        <option value="income">Income</option>
-        <option value="expense">Expense</option>
-      </select>
-      <textarea name="note" placeholder="Note (optional)"></textarea>
-      <button type="submit">Add</button>
-    </form>
+
+  <!-- Galaxy background -->
+  <video autoplay muted loop id="bg-video">
+    <source src="{{ url_for('static', filename='background.mp4') }}" type="video/mp4">
+    Your browser does not support HTML5 video.
+  </video>
+
+  <!-- Navbar -->
+  <div class="navbar">
+      <a href="{{url_for('dashboard', user_id=session.get('user_id'))}}">Transactions</a>
+      <a href="{{ url_for('stats') }}">Stats</a>
+      <a href="{{ url_for('dash.accounts')}}">Accounts</a>
+      <a href="{{ url_for('more') }}">More</a>
+      <a href="{{ url_for('logout') }}" class="logout">Logout</a>
   </div>
+
+  <!-- Form content -->
+ <!-- Form content inside styled centered box -->
+<div class="form-container">
+  <h2>Add Transaction</h2>
+  <form action="{{ url_for('transaction.add_transaction') }}" method="POST">
+    <label>Type:</label>
+    <select name="type" id="type-select" required>
+      <option value="income">Income</option>
+      <option value="expense">Expense</option>
+      <option value="transfer">Transfer</option>
+    </select>
+
+    <label>Date:</label>
+    <input type="date" name="date" value="{{ today }}" required>
+
+    <label>Amount:</label>
+    <div class="amount-wrapper">
+      <span class="dollar-sign">$</span>
+      <input type="number" style="padding-left: 30px" step="0.01" name="amount" required>
+    </div>
+
+
+
+    <!-- Shown only for income/expense -->
+    <div id="non-transfer-fields">
+      <label>Category:</label>
+      <select name="category" id="category-dropdown" required>
+        <optgroup label="Income Categories" id="income-options" style="display: none;">
+          {% for cat in income_categories %}
+            <option value="{{ cat }}">{{ cat }}</option>
+          {% endfor %}
+        </optgroup>
+        <optgroup label="Expense Categories" id="expense-options" style="display: none;">
+          {% for cat in expense_categories %}
+            <option value="{{ cat }}">{{ cat }}</option>
+          {% endfor %}
+        </optgroup>
+        <option value="custom">Custom...</option>
+
+      </select>
+
+      <input type="text" id="custom-category" name="custom_category" placeholder="Enter custom category" style="display:none;">
+
+      <label>Account:</label>
+      <select name="account_id" required>
+          {% for account in accounts %}
+            <option value="{{ account.id }}">{{ account.name }} ({{ account.group.name }})</option>
+          {% endfor %}
+        </select>
+
+    </div>
+
+    <!-- Shown only for transfer -->
+    <div id="transfer-fields" style="display: none;">
+      <label>From Account:</label>
+      <select name="from_account_id">
+        {% for account in accounts %}
+          <option value="{{ account.id }}">{{ account.name }}</option>
+        {% endfor %}
+      </select>
+
+      <label>To Account:</label>
+      <select name="to_account_id">
+        {% for account in accounts %}
+          <option value="{{ account.id }}">{{ account.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <label>Note:</label>
+    <input type="text" name="note" list="suggested-notes">
+    <datalist id="suggested-notes">
+      <option value="Paycheck">
+      <option value="Groceries">
+      <option value="Rent">
+      <option value="Gift">
+    </datalist>
+
+    <button type="submit">Add Transaction</button>
+  </form>
+</div>
+
+<script>
+  const typeSelect = document.getElementById("type-select");
+  const nonTransferFields = document.getElementById("non-transfer-fields");
+  const transferFields = document.getElementById("transfer-fields");
+  const customCategory = document.getElementById("custom-category");
+  const categorySelect = document.getElementById("category-dropdown");
+  const inputs = document.querySelectorAll('.form-container input, .form-container select');
+
+  function updateCategoryOptions(type) {
+    categorySelect.innerHTML = "";  // Clear all options
+
+    const customOption = document.createElement("option");
+    customOption.value = "custom";
+    customOption.textContent = "Custom...";
+
+    const categories = (type === "income")
+      ? {{ income_categories|tojson }}
+      : {{ expense_categories|tojson }};
+
+    categories.forEach(cat => {
+      let opt = document.createElement("option");
+      opt.value = cat;
+      opt.textContent = cat;
+      categorySelect.appendChild(opt);
+    });
+
+    categorySelect.appendChild(customOption);
+  }
+
+  function handleCustomCategory() {
+    customCategory.style.display = (categorySelect.value === "custom") ? "block" : "none";
+    customCategory.required = (categorySelect.value === "custom");
+  }
+
+  function updateView() {
+    const type = typeSelect.value;
+
+    // Toggle fields
+    if (type === "transfer") {
+      transferFields.style.display = "block";
+      nonTransferFields.style.display = "none";
+    } else {
+      transferFields.style.display = "none";
+      nonTransferFields.style.display = "block";
+      updateCategoryOptions(type);
+    }
+
+    // Border color change
+    inputs.forEach(el => el.classList.remove("income-border", "expense-border", "transfer-border"));
+    const classToAdd = type + "-border";
+    inputs.forEach(el => {
+      if (el.name !== "type") el.classList.add(classToAdd);
+    });
+
+    handleCustomCategory();
+  }
+
+  // Init
+  typeSelect.addEventListener("change", updateView);
+  categorySelect.addEventListener("change", handleCustomCategory);
+  updateView();  // Trigger on load
+</script>
+
+
+
 </body>
 </html>

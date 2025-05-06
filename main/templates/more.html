@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>More - WalletO</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+      color: white;
+      background-color: black;
+      overflow-y: auto;
+    }
+
+    #bg-video {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      min-width: 100%;
+      min-height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+
+    .navbar {
+      display: flex;
+      justify-content: space-around;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 10px 0;
+    }
+
+    .navbar a {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 8px 16px;
+    }
+
+    .navbar a.logout {
+      color: red;
+    }
+
+    .container {
+      padding: 60px 30px;
+      text-align: center;
+    }
+
+    .info-box {
+      background-color: rgba(255, 255, 255, 0.1);
+      margin: 20px auto;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 500px;
+      box-shadow: 0 0 10px white;
+    }
+
+    .info-box h2 {
+      color: #00ffff;
+      margin-bottom: 10px;
+    }
+
+    .info-box p {
+      font-size: 16px;
+      margin: 5px 0;
+    }
+
+    .action-buttons {
+      margin-top: 30px;
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      flex-wrap: wrap;
+    }
+
+    .action-buttons a {
+      text-decoration: none;
+    }
+
+    .action-buttons button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .action-buttons button:hover {
+      transform: scale(1.05);
+    }
+
+    .btn-password {
+      background-color: #3498db;
+      color: white;
+    }
+
+    .btn-export {
+      background-color: #2ecc71;
+      color: white;
+    }
+
+  </style>
+</head>
+<body>
+
+<video autoplay muted loop id="bg-video">
+  <source src="{{ url_for('static', filename='background.mp4') }}" type="video/mp4">
+</video>
+
+<div class="navbar">
+  <a href="{{ url_for('dashboard', user_id=session.get('user_id')) }}">Transactions</a>
+  <a href="{{ url_for('stats') }}">Stats</a>
+  <a href="{{ url_for('dash.accounts') }}">Accounts</a>
+  <a href="{{ url_for('more') }}">More</a>
+  <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+</div>
+
+<div class="container">
+  <div class="info-box">
+    <h2>Account Info</h2>
+    <p><strong>Name:</strong> {{ user.name }}</p>
+    <p><strong>Email:</strong> {{ user.email }}</p>
+  </div>
+
+  <div class="action-buttons">
+    <a href="{{ url_for('change_password') }}">
+      <button class="btn-password">Change Password</button>
+    </a>
+    <a href="{{ url_for('export_transactions') }}">
+      <button class="btn-export">Export Transactions</button>
+    </a>
+  </div>
+</div>
+
+</body>
+</html>

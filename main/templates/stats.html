@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stats - WalletO</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+      color: white;
+      overflow-y: auto;
+    }
+
+    #bg-video {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      min-width: 100%;
+      min-height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+
+    .navbar {
+      display: flex;
+      justify-content: space-around;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 10px 0;
+    }
+
+    .navbar a {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 8px 16px;
+    }
+
+    .navbar a.logout {
+      color: red;
+    }
+
+    .content {
+      padding: 60px 30px;
+      text-align: center;
+    }
+
+    canvas {
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      box-shadow: 0 0 10px white;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+
+  <video autoplay muted loop id="bg-video">
+    <source src="{{ url_for('static', filename='background.mp4') }}" type="video/mp4">
+  </video>
+
+  <div class="navbar">
+    <a href="{{url_for('dashboard', user_id=session.get('user_id'))}}">Transactions</a>
+    <a href="{{ url_for('stats') }}">Stats</a>
+    <a href="{{ url_for('dash.accounts')}}">Accounts</a>
+    <a href="{{ url_for('more') }}">More</a>
+    <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+  </div>
+
+  <div class="content">
+      <h1>Income vs Expense - <span id="yearText">{{ current_year }}</span></h1>
+      <div style="margin-bottom: 20px;">
+        <button onclick="changeYear(-1)" style="font-size: 20px;">←</button>
+        <span style="margin: 0 15px;">{{ current_year }}</span>
+        <button onclick="changeYear(1)" style="font-size: 20px;">→</button>
+      </div>
+      <canvas id="lineChart" width="400" height=auto></canvas>
+    </div>
+
+
+  <script>
+    const ctx = document.getElementById('lineChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: {{ labels|tojson }},
+        datasets: [
+          {
+            label: 'Income',
+            borderColor: 'blue',
+            backgroundColor: 'rgba(0,0,255,0.1)',
+            data: {{ income_data|tojson }},
+            tension: 0.3
+          },
+          {
+            label: 'Expense',
+            borderColor: 'red',
+            backgroundColor: 'rgba(255,0,0,0.1)',
+            data: {{ expense_data|tojson }},
+            tension: 0.3
+          }
+        ]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              color: "white"
+            }
+          },
+          x: {
+            ticks: {
+              color: "white"
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: "white"
+            }
+          }
+        }
+      }
+    });
+    function changeYear(offset) {
+        const currentYear = {{ current_year }};
+        const newYear = currentYear + offset;
+        window.location.href = `/stats?year=${newYear}`;
+    }
+  </script>
+
+</body>
+</html>

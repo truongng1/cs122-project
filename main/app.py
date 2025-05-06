@@ -1,11 +1,14 @@
-from flask import Flask, request, redirect, url_for, render_template, session, flash
-from datetime import timedelta
-import os
+from flask import Flask, request, redirect, url_for, render_template, session, flash, g, send_file
 from flask_sqlalchemy import SQLAlchemy
-from models.models import db, User
+from datetime import datetime, timedelta
 from collections import defaultdict
-from datetime import datetime
+import pandas as pd
+import io
+import os
+
 from routes.transaction_routes import transaction_bp
+from routes.dashboard_routes import dashboard_bp
+from models.models import db, User, Transaction, Account, AccountGroup
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
@@ -18,14 +21,20 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(email="alice@example.com").first():
-        db.session.add(User(name="Alice", email="alice@example.com", password="password123"))
+        user = User(name="Alice", email="alice@example.com")
+        user.set_password("password123")
+        db.session.add(user)
         db.session.commit()
+
+@app.before_request
+def load_logged_in_user():
+    user_id = session.get('user_id')
+    g.user = User.query.get(user_id) if user_id else None
 
 @app.route('/')
 def index():
-    user_id = session.get('user_id')
-    if user_id:
-        return redirect(url_for('dashboard', user_id=user_id))
+    if session.get('user_id'):
+        return redirect(url_for('dashboard', user_id=session['user_id']))
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -35,15 +44,16 @@ def login():
         email = request.form['email']
         password = request.form['password']
 
-        user = User.query.filter_by(email=email, password=password).first()
-        if user:
+        user = User.query.filter_by(email=email).first()
+        if user and user.check_password(password):
             session.permanent = True
             session['user_id'] = user.id
             return redirect(url_for('dashboard', user_id=user.id))
         else:
-            error = 'Invalid email or password'
+            error = "Invalid email or password"
 
     return render_template('login.html', error=error)
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     error = None
@@ -54,7 +64,6 @@ def register():
         password = request.form['password']
         confirm_password = request.form['confirm_password']
 
-        # ✅ Validate password
         if len(password) < 6:
             error = "Password must meet all complexity requirements."
         elif password != confirm_password:
@@ -62,17 +71,15 @@ def register():
         elif User.query.filter_by(email=email).first():
             error = "Email already exists."
         else:
-            new_user = User(
-                name=f"{first_name} {last_name}",
-                email=email,
-                password=password
-            )
+            new_user = User(name=f"{first_name} {last_name}", email=email)
+            new_user.set_password(password)
             db.session.add(new_user)
             db.session.commit()
             return redirect(url_for('login'))
 
     return render_template('register.html', error=error)
-@app.route('/user/<int:user_id>')
+
+@app.route('/user/<string:user_id>', endpoint='dashboard')
 def dashboard(user_id):
     if session.get('user_id') != user_id:
         return redirect(url_for('login'))
@@ -87,35 +94,97 @@ def dashboard(user_id):
     current_month = datetime.now().strftime("%B")
 
     for t in user.transactions:
-        # Daily
-        if t.date.year == current_year and t.date.strftime("%B") == current_month:
-            key = t.date.strftime("%Y-%m-%d")
-            daily_transactions[key].append(t)
-        # Monthly
         if t.date.year == current_year:
-            key = t.date.strftime("%B")
-            if t.type == "income":
-                monthly_summary[key]['income'] += t.amount
-            elif t.type == "expense":
-                monthly_summary[key]['expense'] += t.amount
+            month = t.date.strftime("%B")
+            if t.type == 'income':
+                monthly_summary[month]['income'] += t.amount
+            elif t.type == 'expense':
+                monthly_summary[month]['expense'] += t.amount
 
-    return render_template("dashboard.html",
-                           user=user,
+            if month == current_month:
+                day = t.date.strftime("%Y-%m-%d")
+                daily_transactions[day].append(t)
+
+    return render_template("dashboard.html", user=user,
                            current_month=current_month,
                            current_year=current_year,
                            daily_transactions=daily_transactions,
                            monthly_summary=monthly_summary)
+
 @app.route('/stats')
 def stats():
-    return "<h1>Stats Page</h1>"
+    user = User.query.get(session.get('user_id'))
+    year = request.args.get('year', default=datetime.now().year, type=int)
+    monthly_summary = defaultdict(lambda: {'income': 0, 'expense': 0})
 
-@app.route('/accounts')
-def accounts():
-    return "<h1>Accounts Page</h1>"
+    for t in user.transactions:
+        if t.date.year == year:
+            month = t.date.strftime("%B")
+            if t.type == 'income':
+                monthly_summary[month]['income'] += t.amount
+            elif t.type == 'expense':
+                monthly_summary[month]['expense'] += t.amount
 
-@app.route('/more')
-def more():
-    return "<h1>More Page</h1>"
+    months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ]
+    income_data = [monthly_summary[m]['income'] for m in months]
+    expense_data = [monthly_summary[m]['expense'] for m in months]
+
+    return render_template('stats.html', user=user, labels=months,
+                           income_data=income_data,
+                           expense_data=expense_data,
+                           current_year=year)
+
+@app.route('/more', endpoint='more')
+def more_page():
+    user = User.query.get(session.get('user_id'))
+    if not user:
+        return redirect(url_for('login'))
+    return render_template('more.html', user=user, current_year=datetime.now().year)
+
+@app.route('/change_password', methods=['GET', 'POST'])
+def change_password():
+    if not g.user:
+        flash("You must be logged in to change your password.")
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        old_password = request.form['old_password']
+        new_password = request.form['new_password']
+        confirm_password = request.form['confirm_password']
+
+        if not g.user.check_password(old_password):
+            flash("Old password is incorrect")
+        elif new_password != confirm_password:
+            flash("New passwords do not match")
+        elif len(new_password) < 6:
+            flash("Password must be at least 6 characters")
+        else:
+            g.user.set_password(new_password)
+            db.session.commit()
+            flash("Password updated successfully")
+            return redirect(url_for('dashboard', user_id=g.user.id))
+
+    return render_template("change_password.html")
+
+@app.route('/export_transactions', methods=['GET', 'POST'])
+def export_transactions():
+    if request.method == 'POST':
+        data = [
+            {'Date': '2025-05-01', 'Type': 'Expense', 'Amount': 50},
+            {'Date': '2025-05-02', 'Type': 'Income', 'Amount': 100}
+        ]
+        df = pd.DataFrame(data)
+        output = io.BytesIO()
+        df.to_excel(output, index=False, sheet_name='Transactions')
+        output.seek(0)
+        return send_file(output,
+                         download_name="transactions.xlsx",
+                         as_attachment=True,
+                         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    return render_template('export_transactions.html')
 
 @app.route('/logout')
 def logout():
@@ -123,7 +192,7 @@ def logout():
     return redirect(url_for('login'))
 
 app.register_blueprint(transaction_bp)
-
+app.register_blueprint(dashboard_bp, url_prefix='/')
 
 if __name__ == '__main__':
     app.run(debug=True)

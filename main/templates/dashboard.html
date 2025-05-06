@@ -1,9 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <head>
   <meta charset="UTF-8">
   <title>Dashboard - WalletO</title>
   <style>
+    .view-toggle button {
+      padding: 10px 20px;
+      margin-right: 10px;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      background-color: #555;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .view-toggle button:hover {
+      background-color: #777;
+      transform: scale(1.05);
+    }
+
+    .view-toggle button.active {
+      background-color: #3498db;
+    }
     body, html {
       margin: 0;
       padding: 0;
@@ -57,9 +77,9 @@
 
   <!-- Navbar -->
   <div class="navbar">
-      <a href="{{ url_for('dashboard',user_id=user.id) }}">Transactions</a>
+      <a href="{{url_for('dashboard', user_id=session.get('user_id'))}}">Transactions</a>
       <a href="{{ url_for('stats') }}">Stats</a>
-      <a href="{{ url_for('accounts') }}">Accounts</a>
+      <a href="{{ url_for('dash.accounts')}}">Accounts</a>
       <a href="{{ url_for('more') }}">More</a>
       <a href="{{ url_for('logout') }}" class="logout">Logout</a>
   </div>
@@ -69,10 +89,11 @@
   <h1>Welcome, {{ user.name }}</h1>
 
   <!-- Toggle Buttons -->
-  <div style="margin: 20px 0;">
-    <button onclick="showView('daily')" style="padding:10px 20px; margin-right:10px; background:#3498db; color:white; border:none; border-radius:5px;">Daily</button>
-    <button onclick="showView('monthly')" style="padding:10px 20px; background:#2ecc71; color:white; border:none; border-radius:5px;">Monthly</button>
+  <div class="view-toggle" style="margin: 20px 0;">
+    <button id="dailyBtn" class="active" onclick="showView('daily')">Daily</button>
+    <button id="monthlyBtn" onclick="showView('monthly')">Monthly</button>
   </div>
+
 
   <!-- Add Transaction Button (Floating) -->
   <button onclick="window.location.href='{{ url_for('transaction.add_transaction_form') }}'"
@@ -81,53 +102,116 @@
   </button>
 
   <!-- Daily Transactions View -->
-      <div id="daily-view">
-        <h2>Daily Transactions - {{ current_month }} {{ current_year }}</h2>
-        {% if daily_transactions %}
-          {% for date, transactions in daily_transactions.items() %}
-            <h3 style="border-bottom:1px solid white;">{{ date }}</h3>
-            <div style="display:flex; flex-wrap:wrap; justify-content:center;">
-              {% for t in transactions %}
-                <div style="background-color:rgba(0,0,0,0.6); margin:10px; padding:15px; border-radius:10px; width:250px; box-shadow: 0 0 5px white;">
-                  <strong>{{ t.type.title() }}</strong> - {{ t.category }}<br>
-                  ${{ "%.2f"|format(t.amount) }}<br>
-                  <small>{{ t.note }}</small><br>
-                  <small>{{ t.date.strftime('%Y-%m-%d') }}</small>
-                </div>
-              {% endfor %}
-            </div>
-          {% endfor %}
-        {% else %}
-          <p>No transactions for this month.</p>
-        {% endif %}
-      </div>
+    <div id="daily-view" style="max-height: 60vh; overflow-y: auto; padding-right: 10px;">
+      <h2>Daily Transactions - {{ current_month }} {{ current_year }}</h2>
+      {% if daily_transactions %}
+        {% for date, transactions in daily_transactions.items() %}
+          <h3 style="border-bottom:1px solid white;">{{ date }}</h3>
+          <div style="display:flex; flex-wrap:wrap; justify-content:center;">
+            {% for t in transactions %}
+              <div style="background-color: {% if t.type == 'income' %}rgba(173, 216, 230, 0.8){% else %}rgba(255, 182, 193, 0.8){% endif %}; color: black; margin:10px; padding:15px; border-radius:10px; width:250px; box-shadow: 0 0 5px white; position: relative;">
+                <form action="{{ url_for('transaction.delete_transaction', transaction_id=t.id) }}" method="POST" style="position:absolute; top:5px; right:8px;">
+                  <button type="submit" style="background:none; border:none; color:black; font-size:16px; cursor:pointer;">×</button>
+                </form>
+                <strong>{{ t.type.title() }}</strong> - {{ t.category }}<br>
+                <strong>${{ "%.2f"|format(t.amount) }}</strong><br>
+                <small>{{ t.note }}</small><br>
+                <small>{{ t.date.strftime('%Y-%m-%d') }}</small>
+              </div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <p>No transactions for this month.</p>
+      {% endif %}
+    </div>
+
 
       <!-- Monthly Summary View -->
       <div id="monthly-view" style="display:none;">
-        <h2>Monthly Summary - {{ current_year }}</h2>
-        <table border="1" style="margin: 0 auto; background: rgba(0,0,0,0.5); color: white; border-collapse: collapse;">
-          <tr style="background: rgba(255,255,255,0.1);">
-            <th style="padding:10px;">Month</th>
-            <th style="padding:10px;">Income</th>
-            <th style="padding:10px;">Expense</th>
-          </tr>
-          {% for month, data in monthly_summary.items() %}
-          <tr>
-            <td style="padding:10px;">{{ month }}</td>
-            <td style="padding:10px;">${{ "%.2f"|format(data.income) }}</td>
-            <td style="padding:10px;">${{ "%.2f"|format(data.expense) }}</td>
-          </tr>
-          {% endfor %}
-        </table>
+        <div style="max-width: 800px; margin: auto;">
+          <canvas id="monthlyChart"></canvas>
+        </div>
+
       </div>
     </div>
-
-    <script>
-    function showView(view) {
+  <script>
+      function showView(view) {
       document.getElementById("daily-view").style.display = (view === 'daily') ? 'block' : 'none';
       document.getElementById("monthly-view").style.display = (view === 'monthly') ? 'block' : 'none';
+
+      document.getElementById("dailyBtn").classList.remove("active");
+      document.getElementById("monthlyBtn").classList.remove("active");
+      if (view === 'daily') {
+        document.getElementById("dailyBtn").classList.add("active");
+      } else {
+        document.getElementById("monthlyBtn").classList.add("active");
+      }
     }
     </script>
+
+<script>
+  // Only render chart when switching to monthly view
+  let chartRendered = false;
+  function showView(view) {
+    document.getElementById("daily-view").style.display = (view === 'daily') ? 'block' : 'none';
+    document.getElementById("monthly-view").style.display = (view === 'monthly') ? 'block' : 'none';
+
+    document.getElementById("dailyBtn").classList.remove("active");
+    document.getElementById("monthlyBtn").classList.remove("active");
+    if (view === 'daily') {
+      document.getElementById("dailyBtn").classList.add("active");
+    } else {
+      document.getElementById("monthlyBtn").classList.add("active");
+      if (!chartRendered) {
+        renderMonthlyChart();
+        chartRendered = true;
+      }
+    }
+  }
+
+  function renderMonthlyChart() {
+    const ctx = document.getElementById('monthlyChart').getContext('2d');
+    const data = {
+      labels: {{ monthly_summary.keys()|list|tojson }},
+      datasets: [
+        {
+          label: 'Income',
+          data: {{ monthly_summary.values()|map(attribute='income')|list|tojson }},
+          backgroundColor: 'rgba(52, 152, 219, 0.7)' // Light blue
+        },
+        {
+          label: 'Expense',
+          data: {{ monthly_summary.values()|map(attribute='expense')|list|tojson }},
+          backgroundColor: 'rgba(231, 76, 60, 0.7)' // Light red
+        }
+      ]
+    };
+
+    const config = {
+      type: 'bar',
+      data: data,
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: 'white'
+            }
+          }
+        }
+      }
+    };
+
+    new Chart(ctx, config);
+  }
+</script>
+
 
 
 
